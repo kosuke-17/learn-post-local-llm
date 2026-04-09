@@ -1,6 +1,6 @@
 # Pokemon Trainer LLM - ポストトレーニング実践
 
-既存の LLM（Qwen2.5-7B）に対して **ポストトレーニング（LoRA fine-tuning）** を行い、ポケモンSV の育成論に特化させるプロジェクト。
+既存の LLM（Qwen2.5-7B）に対して **ポストトレーニング（LoRA fine-tuning）** を行い、初代ポケモン（赤緑、No.001〜151）の育成論に特化させるプロジェクト。
 
 ## ポストトレーニングとは
 
@@ -30,11 +30,11 @@ uv sync
 
 ### STEP 1: データセット生成
 
-50件の育成論データセットを用意済み。
+69件の初代ポケモン育成論データセットを用意済み。
 
 ```bash
 wc -l train.jsonl valid.jsonl test.jsonl
-# train: 40件, valid: 5件, test: 5件
+# train: 40件, valid: 5件, test: 5件（全データ: sample-data.jsonl 69件）
 ```
 
 ### STEP 2: ベースモデルのテスト
@@ -43,19 +43,19 @@ fine-tune 前の回答品質を確認する。
 
 ```bash
 # Qwen2.5-7B（日本語に強い、おすすめ）
-uv run mlx_lm.generate --model mlx-community/Qwen2.5-7B-Instruct-4bit --prompt "ミミッキュを対戦用に育成したいんだけど、おすすめの型を教えて" --max-tokens 500
+uv run mlx_lm.generate --model mlx-community/Qwen2.5-7B-Instruct-4bit --prompt "リザードンの育成論を教えて" --max-tokens 500
 ```
 
 ### STEP 3: LoRA fine-tune
 
 ```bash
-uv run python -m mlx_lm.lora \
+uv run mlx_lm.lora \
   --model mlx-community/Qwen2.5-7B-Instruct-4bit \
   --train \
   --data ./ \
   --iters 200 \
   --batch-size 4 \
-  --lora-layers 16 \
+  --num-layers 16 \
   --learning-rate 1e-5 \
   --adapter-path ./adapters
 ```
@@ -66,7 +66,7 @@ uv run python -m mlx_lm.lora \
 uv run python -m mlx_lm.generate \
   --model mlx-community/Qwen2.5-7B-Instruct-4bit \
   --adapter-path ./adapters \
-  --prompt "ガブリアスの育成論を教えて" \
+  --prompt "ゲンガーの育成論を教えて" \
   --max-tokens 500
 ```
 
@@ -100,7 +100,7 @@ cd ..
 cat > pokemon.Modelfile << 'EOF'
 FROM ./pokemon-trainer.gguf
 
-SYSTEM あなたはポケモンSV（スカーレット・バイオレット）の対戦に精通したポケモントレーナーだ。育成論・パーティ構築・対戦の立ち回りについて的確なアドバイスを行う。
+SYSTEM あなたは初代ポケモン（赤緑、No.001〜151）を現行世代の対戦環境で使うことに精通したポケモントレーナーだ。育成論・パーティ構築・対戦の立ち回りについて的確なアドバイスを行う。
 
 PARAMETER temperature 0.7
 PARAMETER top_p 0.9
@@ -120,13 +120,19 @@ EOF
 ollama create pokemon-trainer -f pokemon.Modelfile
 
 # テスト
-ollama run pokemon-trainer "カイリューの育成論を教えて"
+ollama run pokemon-trainer "カビゴンの育成論を教えて"
+
+# モデルの一覧確認
+ollama list
+
+# モデルの削除
+ollama rm pokemon-trainer
 ```
 
 ## ファイル構成
 
 ```
-├── sample-data.jsonl       # 全データ（50件）
+├── sample-data.jsonl       # 全データ（69件）
 ├── train.jsonl             # 学習データ（40件）
 ├── valid.jsonl             # 検証データ（5件）
 ├── test.jsonl              # テストデータ（5件）
